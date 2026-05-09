@@ -1,31 +1,20 @@
 package main
 
 import (
-	"encoding/json"
+	"log"
 	"net/http"
+
+	"github.com/v3lichko/student-distribution/internal/db"
+	"github.com/v3lichko/student-distribution/internal/handler"
 )
 
-func writeJson(w http.ResponseWriter, code int, data any) {
-	w.Header().Set("Content-type", "application/json")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(data)
-}
-
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJson(w, http.StatusMethodNotAllowed, map[string]string{
-			"error": "method not allowed",
-		})
-		return
-	}
-	writeJson(w, http.StatusOK, map[string]string{
-		"status": "ok",
-	})
-}
-
 func main() {
+	database := db.Connect()
+	defer database.Close()
+
 	serve := http.NewServeMux()
-	serve.HandleFunc("/health", healthHandler)
+	serve.HandleFunc("/health", handler.HealthHandler)
+	log.Println("server is started")
 	err := http.ListenAndServe(":8080", serve)
 	if err != nil {
 		panic(err)
