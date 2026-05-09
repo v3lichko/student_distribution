@@ -13,6 +13,8 @@ func main() {
 	defer database.Close()
 
 	serve := http.NewServeMux()
+	studentHandler := handler.NewStudentHandler(database)
+	serve.HandleFunc("/students", studentHandler.CreateStudent)
 	serve.HandleFunc("/health", handler.HealthHandler)
 	log.Println("server is started")
 	err := http.ListenAndServe(":8080", serve)
