@@ -14,8 +14,12 @@ func main() {
 
 	serve := http.NewServeMux()
 	studentHandler := handler.NewStudentHandler(database)
-	serve.HandleFunc("/students", studentHandler.CreateStudent)
+	serve.HandleFunc("/students", studentHandler.Students)
+	groupHandler := handler.NewGroupHandler(database)
 	serve.HandleFunc("/health", handler.HealthHandler)
+	serve.HandleFunc("/groups", groupHandler.Groups)
+	distributionHandler := handler.NewDistributionHandler(database)
+	serve.HandleFunc("/distribution/run", distributionHandler.StartDistribution)
 	log.Println("server is started")
 	err := http.ListenAndServe(":8080", serve)
 	if err != nil {
