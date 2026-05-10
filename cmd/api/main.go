@@ -20,6 +20,9 @@ func main() {
 	serve.HandleFunc("/groups", groupHandler.Groups)
 	distributionHandler := handler.NewDistributionHandler(database)
 	serve.HandleFunc("/distribution/run", distributionHandler.StartDistribution)
+	serve.HandleFunc("/distribution", distributionHandler.Distribution)
+	serve.HandleFunc("/distribution/export", distributionHandler.ExportDistributionCSV)
+	serve.HandleFunc("/students/import", studentHandler.ImportStudentsCSV)
 	log.Println("server is started")
 	err := http.ListenAndServe(":8080", serve)
 	if err != nil {

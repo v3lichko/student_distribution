@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -68,4 +69,30 @@ func (h *StudentHandler) GetStudents(w http.ResponseWriter, r *http.Request) {
 	student := make([]models.Student, 0)
 	h.db.Model(&student).Select()
 	response.WriteJSON(w, http.StatusOK, student)
+}
+
+func (h *StudentHandler) ImportStudentsCSV(w http.ResponseWriter, r *http.Request) {
+	file, _, _ := r.FormFile("file")
+	defer file.Close()
+	reader := csv.NewReader(file)
+	records, _ := reader.ReadAll()
+	for i, record := range records {
+		if i == 0 {
+			continue
+		}
+
+		isu, _ := strconv.Atoi(record[0])
+		score, _ := strconv.Atoi(record[3])
+
+		student := models.Student{
+			ISU:      isu,
+			FullName: record[1],
+			Telegram: record[2],
+			Score:    score,
+		}
+		h.db.Model(&student).Insert()
+	}
+	response.WriteJSON(w, http.StatusCreated, map[string]string{
+		"status": "students imported",
+	})
 }
