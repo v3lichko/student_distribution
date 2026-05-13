@@ -48,6 +48,12 @@ func (h *StudentHandler) Students(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// @Summary Delete students
+// @Tags students
+// @Produce json
+// @Param isu query int true "isu of student"
+// @Success 200 {object} map[string]string
+// @Router /students [delete]
 func (h *StudentHandler) DeleteStudent(w http.ResponseWriter, r *http.Request) {
 	isuStr := r.URL.Query().Get("isu")
 	isu, _ := strconv.Atoi(isuStr)
@@ -65,12 +71,24 @@ func (h *StudentHandler) DeleteStudent(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// @Summary Get students
+// @Tags students
+// @Produce json
+// @Success 200 {array} map[string]string
+// @Router /students [get]
 func (h *StudentHandler) GetStudents(w http.ResponseWriter, r *http.Request) {
 	student := make([]models.Student, 0)
 	h.db.Model(&student).Select()
 	response.WriteJSON(w, http.StatusOK, student)
 }
 
+// @Summary Import students
+// @Tags students
+// @Accept multipart/form-data
+// @Produce json
+// @Param film formData file true "CSV with students"
+// @Success 201 {object} map[string]string
+// @Router /students/import [post]
 func (h *StudentHandler) ImportStudentsCSV(w http.ResponseWriter, r *http.Request) {
 	file, _, _ := r.FormFile("file")
 	defer file.Close()

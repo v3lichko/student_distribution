@@ -39,6 +39,11 @@ func NewDistributionHandler(db *pg.DB) *DistributionHandler {
 	}
 }
 
+// @Summary Get Distribution
+// @Tags Distribution
+// @Produce json
+// @Success 200  {array}   models.GroupDistribution
+// @Router /distribution [get]
 func (h *DistributionHandler) Distribution(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		h.GetDistribution(w, r)
@@ -70,6 +75,11 @@ func (h *DistributionHandler) GetDistribution(w http.ResponseWriter, r *http.Req
 	response.WriteJSON(w, http.StatusOK, result)
 }
 
+// @Summary Run distribution
+// @Tags distribution
+// @Produce text/csv
+// @Success 200 {file} string
+// @Router /distribution/export [get]
 func (h *DistributionHandler) StartDistribution(w http.ResponseWriter, r *http.Request) {
 	students := make([]models.Student, 0)
 	groups := make([]models.Group, 0)
@@ -88,6 +98,11 @@ func (h *DistributionHandler) StartDistribution(w http.ResponseWriter, r *http.R
 	response.WriteJSON(w, http.StatusOK, students)
 }
 
+// @Summary Run distribution
+// @Tags distribution
+// @Produce json
+// @Success 200 {array} models.Student
+// @Router /distribution/run [post]
 func (h *DistributionHandler) ExportDistributionCSV(w http.ResponseWriter, r *http.Request) {
 	students := make([]models.Student, 0)
 	h.db.Model(&students).

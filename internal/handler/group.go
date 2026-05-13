@@ -33,6 +33,13 @@ func (h *GroupHandler) Groups(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// @Summary Create groups
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param body body models.Group true "Group data"
+// @Success 201 {object} models.Group
+// @Router /groups [post]
 func (h *GroupHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	var group models.Group
 	json.NewDecoder(r.Body).Decode(&group)
@@ -40,6 +47,11 @@ func (h *GroupHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusCreated, group)
 }
 
+// @Summary get groups
+// @Tags groups
+// @Produce json
+// @Success 200 {array} models.Group
+// @Router /groups [get]
 func (h *GroupHandler) GetGroups(w http.ResponseWriter, r *http.Request) {
 	groups := make([]models.Group, 0)
 	h.db.Model(&groups).Select()
