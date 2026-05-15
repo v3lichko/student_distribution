@@ -77,9 +77,9 @@ func (h *DistributionHandler) GetDistribution(w http.ResponseWriter, r *http.Req
 
 // @Summary Run distribution
 // @Tags distribution
-// @Produce text/csv
-// @Success 200 {file} string
-// @Router /distribution/export [get]
+// @Produce json
+// @Success 200 {array} models.Student
+// @Router /distribution/run [post]
 func (h *DistributionHandler) StartDistribution(w http.ResponseWriter, r *http.Request) {
 	students := make([]models.Student, 0)
 	groups := make([]models.Group, 0)
@@ -98,11 +98,11 @@ func (h *DistributionHandler) StartDistribution(w http.ResponseWriter, r *http.R
 	response.WriteJSON(w, http.StatusOK, students)
 }
 
-// @Summary Run distribution
+// @Summary Export distribution CSV
 // @Tags distribution
-// @Produce json
-// @Success 200 {array} models.Student
-// @Router /distribution/run [post]
+// @Produce text/csv
+// @Success 200 {file} string
+// @Router /distribution/export [get]
 func (h *DistributionHandler) ExportDistributionCSV(w http.ResponseWriter, r *http.Request) {
 	students := make([]models.Student, 0)
 	h.db.Model(&students).

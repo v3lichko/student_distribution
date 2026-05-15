@@ -1,12 +1,12 @@
 -include Makefile.mk
 export
 
-APP_PORT     ?= 8080
-POSTGRES_HOST ?= localhost
-POSTGRES_PORT ?= 5433
-POSTGRES_USER ?= jigoku
-POSTGRES_PASSWORD ?= 123
-POSTGRES_DB  ?= students_db
+APP_PORT       ?= 8080
+POSTGRES_HOST  ?= localhost
+POSTGRES_PORT  ?= 5433
+POSTGRES_USER  ?=
+POSTGRES_PASSWORD ?=
+POSTGRES_DB    ?=
 CSV_PATH       ?= raw_data/students.csv
 EXPORT_PATH    ?= raw_data/distribution_export.csv
 GROUP_COUNT    ?= 10
@@ -20,10 +20,12 @@ db-up:
 help:          
 	@grep -E '^[a-zA-Z_-]+:.*?##' $(MAKEFILE_LIST) | awk -F':.*?## ' '{printf "  %-22s %s\n", $$1, $$2}'
 
-init:         
+init:
 	@test -f Makefile.mk || cp Makefile.mk.dist Makefile.mk
-	@test -f .env        || cp .env.dist .env
-	@echo "✓ init: Makefile.mk and .env are ready"
+	@echo "✓ init: Makefile.mk is ready — fill in your credentials"
+
+run:
+	go run ./cmd/api/main.go
 
 db-down:
 	docker compose down

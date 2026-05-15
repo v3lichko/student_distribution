@@ -1,0 +1,167 @@
+basePath: /
+definitions:
+  models.Group:
+    properties:
+      capacity:
+        type: integer
+      number:
+        type: integer
+    type: object
+  models.GroupDistribution:
+    properties:
+      group_number:
+        type: integer
+      students:
+        items:
+          $ref: '#/definitions/models.Student'
+        type: array
+    type: object
+  models.Student:
+    properties:
+      full_name:
+        type: string
+      group_number:
+        type: integer
+      isu:
+        type: integer
+      score:
+        type: integer
+      telegram:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  title: Student Distribution API
+  version: "1.0"
+paths:
+  /distribution:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.GroupDistribution'
+            type: array
+      summary: Get Distribution
+      tags:
+      - Distribution
+  /distribution/export:
+    get:
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      summary: Export distribution CSV
+      tags:
+      - distribution
+  /distribution/run:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Student'
+            type: array
+      summary: Run distribution
+      tags:
+      - distribution
+  /groups:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Group'
+            type: array
+      summary: get groups
+      tags:
+      - groups
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Group data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.Group'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Group'
+      summary: Create groups
+      tags:
+      - groups
+  /students:
+    delete:
+      parameters:
+      - description: isu of student
+        in: query
+        name: isu
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete students
+      tags:
+      - students
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Student'
+            type: array
+      summary: Get students
+      tags:
+      - students
+  /students/import:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: CSV with students
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Import students
+      tags:
+      - students
+swagger: "2.0"

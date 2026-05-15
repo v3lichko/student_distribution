@@ -1,0 +1,260 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "Student Distribution API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/",
+    "paths": {
+        "/distribution": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Distribution"
+                ],
+                "summary": "Get Distribution",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.GroupDistribution"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/distribution/export": {
+            "get": {
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "distribution"
+                ],
+                "summary": "Export distribution CSV",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    }
+                }
+            }
+        },
+        "/distribution/run": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "distribution"
+                ],
+                "summary": "Run distribution",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Student"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/groups": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "get groups",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Group"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "groups"
+                ],
+                "summary": "Create groups",
+                "parameters": [
+                    {
+                        "description": "Group data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Group"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Group"
+                        }
+                    }
+                }
+            }
+        },
+        "/students": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "students"
+                ],
+                "summary": "Get students",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Student"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "students"
+                ],
+                "summary": "Delete students",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "isu of student",
+                        "name": "isu",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/import": {
+            "post": {
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "students"
+                ],
+                "summary": "Import students",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "CSV with students",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.Group": {
+            "type": "object",
+            "properties": {
+                "capacity": {
+                    "type": "integer"
+                },
+                "number": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.GroupDistribution": {
+            "type": "object",
+            "properties": {
+                "group_number": {
+                    "type": "integer"
+                },
+                "students": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Student"
+                    }
+                }
+            }
+        },
+        "models.Student": {
+            "type": "object",
+            "properties": {
+                "full_name": {
+                    "type": "string"
+                },
+                "group_number": {
+                    "type": "integer"
+                },
+                "isu": {
+                    "type": "integer"
+                },
+                "score": {
+                    "type": "integer"
+                },
+                "telegram": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
