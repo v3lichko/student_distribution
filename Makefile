@@ -22,7 +22,6 @@ help:
 
 init:
 	@test -f Makefile.mk || cp Makefile.mk.dist Makefile.mk
-	@echo "✓ init: Makefile.mk is ready — fill in your credentials"
 
 run:
 	go run ./cmd/api/main.go
