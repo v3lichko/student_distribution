@@ -6,27 +6,19 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-pg/pg/v10"
 	"github.com/v3lichko/student-distribution/internal/models"
 	"github.com/v3lichko/student-distribution/internal/response"
+	"github.com/v3lichko/student-distribution/internal/storage"
 )
 
 type StudentHandler struct {
-	db *pg.DB
+	storage *storage.StudentStorage
 }
 
-func NewStudentHandler(db *pg.DB) *StudentHandler {
+func NewStudentHandler(studentStorage *storage.StudentStorage) *StudentHandler {
 	return &StudentHandler{
-		db: db,
+		storage: studentStorage,
 	}
-}
-
-func (h *StudentHandler) CreateStudent(w http.ResponseWriter, r *http.Request) {
-	var student models.Student
-	json.NewDecoder(r.Body).Decode(&student)
-
-	h.db.Model(&student).Insert()
-	response.WriteJSON(w, http.StatusCreated, student)
 }
 
 func (h *StudentHandler) Students(w http.ResponseWriter, r *http.Request) {
@@ -34,10 +26,12 @@ func (h *StudentHandler) Students(w http.ResponseWriter, r *http.Request) {
 		h.CreateStudent(w, r)
 		return
 	}
+
 	if r.Method == http.MethodGet {
 		h.GetStudents(w, r)
 		return
 	}
+
 	if r.Method == http.MethodDelete {
 		h.DeleteStudent(w, r)
 		return
@@ -48,52 +42,40 @@ func (h *StudentHandler) Students(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @Summary Delete students
-// @Tags students
-// @Produce json
-// @Param isu query int true "isu of student"
-// @Success 200 {object} map[string]string
-// @Router /students [delete]
+func (h *StudentHandler) CreateStudent(w http.ResponseWriter, r *http.Request) {
+	var student models.Student
+
+	json.NewDecoder(r.Body).Decode(&student)
+
+	h.storage.CreateStudent(&student)
+
+	response.WriteJSON(w, http.StatusCreated, student)
+}
+
+func (h *StudentHandler) GetStudents(w http.ResponseWriter, r *http.Request) {
+	students := h.storage.GetStudents()
+
+	response.WriteJSON(w, http.StatusOK, students)
+}
+
 func (h *StudentHandler) DeleteStudent(w http.ResponseWriter, r *http.Request) {
 	isuStr := r.URL.Query().Get("isu")
 	isu, _ := strconv.Atoi(isuStr)
-	_, err := h.db.Model((*models.Student)(nil)).
-		Where("isu = ?", isu).
-		Delete()
-	if err != nil {
-		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{
-			"error": err.Error(),
-		})
-		return
-	}
+
+	h.storage.DeleteStudent(isu)
+
 	response.WriteJSON(w, http.StatusOK, map[string]string{
 		"status": "deleted",
 	})
 }
 
-// @Summary Get students
-// @Tags students
-// @Produce json
-// @Success 200 {array} models.Student
-// @Router /students [get]
-func (h *StudentHandler) GetStudents(w http.ResponseWriter, r *http.Request) {
-	student := make([]models.Student, 0)
-	h.db.Model(&student).Select()
-	response.WriteJSON(w, http.StatusOK, student)
-}
-
-// @Summary Import students
-// @Tags students
-// @Accept multipart/form-data
-// @Produce json
-// @Param file formData file true "CSV with students"
-// @Success 201 {object} map[string]string
-// @Router /students/import [post]
 func (h *StudentHandler) ImportStudentsCSV(w http.ResponseWriter, r *http.Request) {
 	file, _, _ := r.FormFile("file")
 	defer file.Close()
+
 	reader := csv.NewReader(file)
 	records, _ := reader.ReadAll()
+
 	for i, record := range records {
 		if i == 0 {
 			continue
@@ -108,8 +90,10 @@ func (h *StudentHandler) ImportStudentsCSV(w http.ResponseWriter, r *http.Reques
 			Telegram: record[2],
 			Score:    score,
 		}
-		h.db.Model(&student).Insert()
+
+		h.storage.CreateStudent(&student)
 	}
+
 	response.WriteJSON(w, http.StatusCreated, map[string]string{
 		"status": "students imported",
 	})
