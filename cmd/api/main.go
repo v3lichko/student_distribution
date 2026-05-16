@@ -24,7 +24,8 @@ func main() {
 	studentStorage := storage.NewStudentStorage(database)
 	studentHandler := handler.NewStudentHandler(studentStorage)
 
-	groupHandler := handler.NewGroupHandler(database)
+	groupStorage := storage.NewGroupStorage(database)
+	groupHandler := handler.NewGroupHandler(groupStorage)
 
 	distributionStorage := storage.NewDistributionStorage(database)
 	distributionHandler := handler.NewDistributionHandler(distributionStorage)
