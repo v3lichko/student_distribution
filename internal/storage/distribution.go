@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"sort"
 
 	"github.com/go-pg/pg/v10"
@@ -17,60 +18,55 @@ func NewDistributionStorage(db *pg.DB) *DistributionStorage {
 	}
 }
 
-func sortByScore(students []models.Student) {
-	sort.Slice(students, func(i int, j int) bool {
-		return students[i].Score > students[j].Score
-	})
-}
-
-func sortByGroup(groups []models.Group) {
-	sort.Slice(groups, func(i int, j int) bool {
-		return groups[i].Number < groups[j].Number
-	})
-}
-
-func sortDistributionByGroup(result []models.GroupDistribution) {
-	sort.Slice(result, func(i int, j int) bool {
-		return result[i].GroupNumber < result[j].GroupNumber
-	})
-}
-
-func (s *DistributionStorage) RunDistribution() []models.Student {
+func (s *DistributionStorage) ListStudents(ctx context.Context) ([]models.Student, error) {
 	students := make([]models.Student, 0)
+
+	err := s.db.ModelContext(ctx, &students).Select()
+	if err != nil {
+		return nil, err
+	}
+
+	return students, nil
+}
+
+func (s *DistributionStorage) ListGroups(ctx context.Context) ([]models.Group, error) {
 	groups := make([]models.Group, 0)
 
-	s.db.Model(&students).Select()
-	s.db.Model(&groups).Select()
+	err := s.db.ModelContext(ctx, &groups).Select()
+	if err != nil {
+		return nil, err
+	}
 
-	sortByScore(students)
-	sortByGroup(groups)
+	return groups, nil
+}
 
-	studentIndex := 0
+func (s *DistributionStorage) UpdateAssignments(ctx context.Context, students []models.Student) error {
+	for i := range students {
+		_, err := s.db.ModelContext(ctx, &students[i]).
+			Column("group_number").
+			Where("isu = ?", students[i].ISU).
+			Update()
 
-	for _, group := range groups {
-		for idx := 0; idx < group.Capacity && studentIndex < len(students); idx++ {
-			students[studentIndex].GroupNumber = &group.Number
-
-			s.db.Model(&students[studentIndex]).
-				Column("group_number").
-				Where("isu = ?", students[studentIndex].ISU).
-				Update()
-
-			studentIndex++
+		if err != nil {
+			return err
 		}
 	}
 
-	return students
+	return nil
 }
 
-func (s *DistributionStorage) GetDistribution() []models.GroupDistribution {
+func (s *DistributionStorage) GetDistribution(ctx context.Context) ([]models.GroupDistribution, error) {
 	students := make([]models.Student, 0)
 
-	s.db.Model(&students).
+	err := s.db.ModelContext(ctx, &students).
 		Where("group_number IS NOT NULL").
 		Order("group_number ASC").
 		Order("score DESC").
 		Select()
+
+	if err != nil {
+		return nil, err
+	}
 
 	resultMap := make(map[int][]models.Student)
 
@@ -92,19 +88,25 @@ func (s *DistributionStorage) GetDistribution() []models.GroupDistribution {
 		})
 	}
 
-	sortDistributionByGroup(result)
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].GroupNumber < result[j].GroupNumber
+	})
 
-	return result
+	return result, nil
 }
 
-func (s *DistributionStorage) GetDistributedStudents() []models.Student {
+func (s *DistributionStorage) GetDistributedStudents(ctx context.Context) ([]models.Student, error) {
 	students := make([]models.Student, 0)
 
-	s.db.Model(&students).
+	err := s.db.ModelContext(ctx, &students).
 		Where("group_number IS NOT NULL").
 		Order("group_number ASC").
 		Order("score DESC").
 		Select()
 
-	return students
+	if err != nil {
+		return nil, err
+	}
+
+	return students, nil
 }

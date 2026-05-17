@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/v3lichko/student-distribution/internal/distribution"
 	"github.com/v3lichko/student-distribution/internal/response"
 	"github.com/v3lichko/student-distribution/internal/storage"
 )
@@ -20,30 +21,80 @@ func NewDistributionHandler(distributionStorage *storage.DistributionStorage) *D
 }
 
 func (h *DistributionHandler) Distribution(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		h.GetDistribution(w, r)
+	if r.Method != http.MethodGet {
+		response.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{
+			"error": "method not allowed",
+		})
 		return
 	}
 
-	response.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{
-		"error": "method not allowed",
-	})
+	h.GetDistribution(w, r)
 }
 
 func (h *DistributionHandler) GetDistribution(w http.ResponseWriter, r *http.Request) {
-	result := h.storage.GetDistribution()
+	result, err := h.storage.GetDistribution(r.Context())
+	if err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
 
 	response.WriteJSON(w, http.StatusOK, result)
 }
 
 func (h *DistributionHandler) StartDistribution(w http.ResponseWriter, r *http.Request) {
-	students := h.storage.RunDistribution()
+	if r.Method != http.MethodPost {
+		response.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{
+			"error": "method not allowed",
+		})
+		return
+	}
 
-	response.WriteJSON(w, http.StatusOK, students)
+	students, err := h.storage.ListStudents(r.Context())
+	if err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	groups, err := h.storage.ListGroups(r.Context())
+	if err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	assigned := distribution.Distribute(students, groups)
+
+	err = h.storage.UpdateAssignments(r.Context(), assigned)
+	if err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, assigned)
 }
 
 func (h *DistributionHandler) ExportDistributionCSV(w http.ResponseWriter, r *http.Request) {
-	students := h.storage.GetDistributedStudents()
+	if r.Method != http.MethodGet {
+		response.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{
+			"error": "method not allowed",
+		})
+		return
+	}
+
+	students, err := h.storage.GetDistributedStudents(r.Context())
+	if err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
+		return
+	}
 
 	w.Header().Set("Content-Type", "text/csv")
 	w.Header().Set("Content-Disposition", `attachment; filename="distribution.csv"`)
@@ -51,7 +102,7 @@ func (h *DistributionHandler) ExportDistributionCSV(w http.ResponseWriter, r *ht
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
 
-	writer.Write([]string{
+	_ = writer.Write([]string{
 		"group_number",
 		"isu",
 		"full_name",
@@ -66,7 +117,7 @@ func (h *DistributionHandler) ExportDistributionCSV(w http.ResponseWriter, r *ht
 			groupNumber = strconv.Itoa(*student.GroupNumber)
 		}
 
-		writer.Write([]string{
+		_ = writer.Write([]string{
 			groupNumber,
 			strconv.Itoa(student.ISU),
 			student.FullName,

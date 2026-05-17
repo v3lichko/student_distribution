@@ -4,21 +4,18 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/go-pg/pg/v10"
 	"github.com/v3lichko/student-distribution/internal/models"
 	"github.com/v3lichko/student-distribution/internal/response"
+	"github.com/v3lichko/student-distribution/internal/storage"
 )
 
 type GroupHandler struct {
-	db *pg.DB
+	storage *storage.GroupStorage
 }
 
-func NewGroupHandler(db *pg.DB) *GroupHandler {
-	return &GroupHandler{
-		db: db,
-	}
+func NewGroupHandler(groupStorage *storage.GroupStorage) *GroupHandler {
+	return &GroupHandler{storage: groupStorage}
 }
-
 func (h *GroupHandler) Groups(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		h.CreateGroup(w, r)
@@ -33,7 +30,7 @@ func (h *GroupHandler) Groups(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @Summary Create groups
+// @Summary Create group
 // @Tags groups
 // @Accept json
 // @Produce json
@@ -43,17 +40,29 @@ func (h *GroupHandler) Groups(w http.ResponseWriter, r *http.Request) {
 func (h *GroupHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	var group models.Group
 	json.NewDecoder(r.Body).Decode(&group)
-	h.db.Model(&group).Insert()
+
+	err := h.storage.CreateGroup(&group)
+	if err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError,
+			map[string]string{"error": err.Error()})
+		return
+	}
+
 	response.WriteJSON(w, http.StatusCreated, group)
 }
 
-// @Summary get groups
+// @Summary Get groups
 // @Tags groups
 // @Produce json
 // @Success 200 {array} models.Group
 // @Router /groups [get]
 func (h *GroupHandler) GetGroups(w http.ResponseWriter, r *http.Request) {
-	groups := make([]models.Group, 0)
-	h.db.Model(&groups).Select()
+	groups, err := h.storage.GetGroups()
+	if err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError,
+			map[string]string{"error": err.Error()})
+		return
+	}
+
 	response.WriteJSON(w, http.StatusOK, groups)
 }
