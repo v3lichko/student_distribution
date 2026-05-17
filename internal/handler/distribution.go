@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/v3lichko/student-distribution/internal/distribution"
+	distribution "github.com/v3lichko/student-distribution/internal/distributition"
 	"github.com/v3lichko/student-distribution/internal/response"
 	"github.com/v3lichko/student-distribution/internal/storage"
 )
