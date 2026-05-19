@@ -15,18 +15,20 @@ func NewStudentStorage(db *pg.DB) *StudentStorage {
 	}
 }
 
-func (s *StudentStorage) CreateStudent(student *models.Student) {
-	s.db.Model(student).Insert()
+func (s *StudentStorage) CreateStudent(student *models.Student) error {
+	_, err := s.db.Model(student).Insert()
+	return err
 }
 
-func (s *StudentStorage) GetStudents() []models.Student {
+func (s *StudentStorage) GetStudents() ([]models.Student, error) {
 	students := make([]models.Student, 0)
-	s.db.Model(&students).Select()
-	return students
+	err := s.db.Model(&students).Select()
+	return students, err
 }
 
-func (s *StudentStorage) DeleteStudent(isu int) {
-	s.db.Model((*models.Student)(nil)).
+func (s *StudentStorage) DeleteStudent(isu int) error {
+	_, err := s.db.Model((*models.Student)(nil)).
 		Where("isu = ?", isu).
 		Delete()
+	return err
 }

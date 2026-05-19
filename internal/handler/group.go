@@ -16,19 +16,6 @@ type GroupHandler struct {
 func NewGroupHandler(groupStorage *storage.GroupStorage) *GroupHandler {
 	return &GroupHandler{storage: groupStorage}
 }
-func (h *GroupHandler) Groups(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		h.CreateGroup(w, r)
-		return
-	}
-	if r.Method == http.MethodGet {
-		h.GetGroups(w, r)
-		return
-	}
-	response.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{
-		"error": "method not allowed",
-	})
-}
 
 // @Summary Create group
 // @Tags groups
@@ -36,31 +23,34 @@ func (h *GroupHandler) Groups(w http.ResponseWriter, r *http.Request) {
 // @Produce json
 // @Param body body models.Group true "Group data"
 // @Success 201 {object} models.Group
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
 // @Router /groups [post]
 func (h *GroupHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	var group models.Group
-	json.NewDecoder(r.Body).Decode(&group)
+	if err := json.NewDecoder(r.Body).Decode(&group); err != nil {
+		response.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
+		return
+	}
 
-	err := h.storage.CreateGroup(&group)
-	if err != nil {
-		response.WriteJSON(w, http.StatusInternalServerError,
-			map[string]string{"error": err.Error()})
+	if err := h.storage.CreateGroup(&group); err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
 		return
 	}
 
 	response.WriteJSON(w, http.StatusCreated, group)
 }
 
-// @Summary Get groups
+// @Summary Get all groups
 // @Tags groups
 // @Produce json
 // @Success 200 {array} models.Group
+// @Failure 500 {object} map[string]string
 // @Router /groups [get]
 func (h *GroupHandler) GetGroups(w http.ResponseWriter, r *http.Request) {
 	groups, err := h.storage.GetGroups()
 	if err != nil {
-		response.WriteJSON(w, http.StatusInternalServerError,
-			map[string]string{"error": err.Error()})
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
 		return
 	}
 

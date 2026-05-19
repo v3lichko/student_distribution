@@ -1,5 +1,18 @@
 basePath: /
 definitions:
+  api.Student:
+    properties:
+      full_name:
+        type: string
+      group_number:
+        type: integer
+      isu:
+        type: integer
+      score:
+        type: integer
+      telegram:
+        type: string
+    type: object
   models.Group:
     properties:
       capacity:
@@ -46,9 +59,15 @@ paths:
             items:
               $ref: '#/definitions/models.GroupDistribution'
             type: array
-      summary: Get Distribution
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get current distribution
       tags:
-      - Distribution
+      - distribution
   /distribution/export:
     get:
       produces:
@@ -56,9 +75,13 @@ paths:
       responses:
         "200":
           description: OK
+        "500":
+          description: Internal Server Error
           schema:
-            type: file
-      summary: Export distribution CSV
+            additionalProperties:
+              type: string
+            type: object
+      summary: Export distribution as CSV
       tags:
       - distribution
   /distribution/run:
@@ -72,7 +95,13 @@ paths:
             items:
               $ref: '#/definitions/models.Student'
             type: array
-      summary: Run distribution
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Run distribution algorithm
       tags:
       - distribution
   /groups:
@@ -86,7 +115,13 @@ paths:
             items:
               $ref: '#/definitions/models.Group'
             type: array
-      summary: get groups
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all groups
       tags:
       - groups
     post:
@@ -106,13 +141,25 @@ paths:
           description: Created
           schema:
             $ref: '#/definitions/models.Group'
-      summary: Create groups
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create group
       tags:
       - groups
   /students:
     delete:
       parameters:
-      - description: isu of student
+      - description: ISU number
         in: query
         name: isu
         required: true
@@ -126,7 +173,19 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Delete students
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete student
       tags:
       - students
     get:
@@ -137,9 +196,47 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.Student'
+              $ref: '#/definitions/api.Student'
             type: array
-      summary: Get students
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all students
+      tags:
+      - students
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Student data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.Student'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.Student'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create student
       tags:
       - students
   /students/import:
@@ -147,7 +244,7 @@ paths:
       consumes:
       - multipart/form-data
       parameters:
-      - description: CSV with students
+      - description: CSV file
         in: formData
         name: file
         required: true
@@ -161,7 +258,13 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Import students
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Import students from CSV
       tags:
       - students
 swagger: "2.0"

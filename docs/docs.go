@@ -21,9 +21,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Distribution"
+                    "distribution"
                 ],
-                "summary": "Get Distribution",
+                "summary": "Get current distribution",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -31,6 +31,15 @@ const docTemplate = `{
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/models.GroupDistribution"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     }
@@ -45,12 +54,18 @@ const docTemplate = `{
                 "tags": [
                     "distribution"
                 ],
-                "summary": "Export distribution CSV",
+                "summary": "Export distribution as CSV",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "OK"
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
-                            "type": "file"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -64,7 +79,7 @@ const docTemplate = `{
                 "tags": [
                     "distribution"
                 ],
-                "summary": "Run distribution",
+                "summary": "Run distribution algorithm",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -72,6 +87,15 @@ const docTemplate = `{
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/models.Student"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     }
@@ -86,7 +110,7 @@ const docTemplate = `{
                 "tags": [
                     "groups"
                 ],
-                "summary": "get groups",
+                "summary": "Get all groups",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -94,6 +118,15 @@ const docTemplate = `{
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/models.Group"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     }
@@ -109,7 +142,7 @@ const docTemplate = `{
                 "tags": [
                     "groups"
                 ],
-                "summary": "Create groups",
+                "summary": "Create group",
                 "parameters": [
                     {
                         "description": "Group data",
@@ -127,6 +160,24 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.Group"
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
                     }
                 }
             }
@@ -139,14 +190,72 @@ const docTemplate = `{
                 "tags": [
                     "students"
                 ],
-                "summary": "Get students",
+                "summary": "Get all students",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.Student"
+                                "$ref": "#/definitions/api.Student"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "students"
+                ],
+                "summary": "Create student",
+                "parameters": [
+                    {
+                        "description": "Student data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Student"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.Student"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     }
@@ -159,11 +268,11 @@ const docTemplate = `{
                 "tags": [
                     "students"
                 ],
-                "summary": "Delete students",
+                "summary": "Delete student",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "isu of student",
+                        "description": "ISU number",
                         "name": "isu",
                         "in": "query",
                         "required": true
@@ -172,6 +281,24 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -193,11 +320,11 @@ const docTemplate = `{
                 "tags": [
                     "students"
                 ],
-                "summary": "Import students",
+                "summary": "Import students from CSV",
                 "parameters": [
                     {
                         "type": "file",
-                        "description": "CSV with students",
+                        "description": "CSV file",
                         "name": "file",
                         "in": "formData",
                         "required": true
@@ -212,12 +339,41 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
                     }
                 }
             }
         }
     },
     "definitions": {
+        "api.Student": {
+            "type": "object",
+            "properties": {
+                "full_name": {
+                    "type": "string"
+                },
+                "group_number": {
+                    "type": "integer"
+                },
+                "isu": {
+                    "type": "integer"
+                },
+                "score": {
+                    "type": "integer"
+                },
+                "telegram": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Group": {
             "type": "object",
             "properties": {
