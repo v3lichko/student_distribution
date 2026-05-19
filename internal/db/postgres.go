@@ -1,23 +1,22 @@
 package db
 
 import (
-	"os"
+	"fmt"
 
 	"github.com/go-pg/pg/v10"
+	"github.com/v3lichko/student-distribution/internal/config"
 )
 
-func getEnv(key string) string {
-	value := os.Getenv(key)
-	return value
-}
-
-func Connect() *pg.DB {
-	database := pg.Connect(&pg.Options{
-		User:     getEnv("POSTGRES_USER"),
-		Password: getEnv("POSTGRES_PASSWORD"),
-		Database: getEnv("POSTGRES_DB"),
-		Addr:     getEnv("POSTGRES_HOST") + ":" + getEnv("POSTGRES_PORT"),
+func Connect(cfg config.DBconfig) (*pg.DB, error) {
+	db := pg.Connect(&pg.Options{
+		User:     cfg.User,
+		Password: cfg.Password,
+		Database: cfg.Database,
+		Addr:     cfg.Addr,
 	})
+	if _, err := db.Exec("SELECT 1"); err != nil {
+		return nil, fmt.Errorf("ping db: %w", err)
+	}
 
-	return database
+	return db, nil
 }

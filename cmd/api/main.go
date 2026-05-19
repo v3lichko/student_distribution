@@ -6,6 +6,7 @@ import (
 
 	httpSwagger "github.com/swaggo/http-swagger"
 	_ "github.com/v3lichko/student-distribution/docs"
+	"github.com/v3lichko/student-distribution/internal/config"
 	"github.com/v3lichko/student-distribution/internal/db"
 	"github.com/v3lichko/student-distribution/internal/handler"
 	"github.com/v3lichko/student-distribution/internal/storage"
@@ -16,37 +17,45 @@ import (
 // @host localhost:8080
 // @BasePath /
 func main() {
-	database := db.Connect()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+
+	database, err := db.Connect(cfg.DB)
+	if err != nil {
+		log.Fatalf("db: %v", err)
+	}
 	defer database.Close()
 
-	serve := http.NewServeMux()
+	mux := http.NewServeMux()
 
 	studentStorage := storage.NewStudentStorage(database)
-	studentHandler := handler.NewStudentHandler(studentStorage)
-
 	groupStorage := storage.NewGroupStorage(database)
-	groupHandler := handler.NewGroupHandler(groupStorage)
-
 	distributionStorage := storage.NewDistributionStorage(database)
+
+	studentHandler := handler.NewStudentHandler(studentStorage)
+	groupHandler := handler.NewGroupHandler(groupStorage)
 	distributionHandler := handler.NewDistributionHandler(distributionStorage)
 
-	serve.HandleFunc("/students", studentHandler.Students)
-	serve.HandleFunc("/students/import", studentHandler.ImportStudentsCSV)
+	mux.HandleFunc("GET /students", studentHandler.GetStudents)
+	mux.HandleFunc("POST /students", studentHandler.CreateStudent)
+	mux.HandleFunc("DELETE /students", studentHandler.DeleteStudent)
+	mux.HandleFunc("POST /students/import", studentHandler.ImportStudentsCSV)
 
-	serve.HandleFunc("/health", handler.HealthHandler)
+	mux.HandleFunc("GET /health", handler.HealthHandler)
 
-	serve.HandleFunc("/groups", groupHandler.Groups)
+	mux.HandleFunc("GET /groups", groupHandler.GetGroups)
+	mux.HandleFunc("POST /groups", groupHandler.CreateGroup)
 
-	serve.HandleFunc("/distribution/run", distributionHandler.StartDistribution)
-	serve.HandleFunc("/distribution", distributionHandler.Distribution)
-	serve.HandleFunc("/distribution/export", distributionHandler.ExportDistributionCSV)
+	mux.HandleFunc("POST /distribution/run", distributionHandler.StartDistribution)
+	mux.HandleFunc("GET /distribution", distributionHandler.GetDistribution)
+	mux.HandleFunc("GET /distribution/export", distributionHandler.ExportDistributionCSV)
 
-	serve.HandleFunc("/swagger/", httpSwagger.WrapHandler)
+	mux.HandleFunc("/swagger/", httpSwagger.WrapHandler)
 
-	log.Println("server is started")
-
-	err := http.ListenAndServe(":8080", serve)
-	if err != nil {
-		panic(err)
+	log.Printf("listening on %s", cfg.Addr)
+	if err := http.ListenAndServe(cfg.Addr, mux); err != nil {
+		log.Fatalf("server: %v", err)
 	}
 }
