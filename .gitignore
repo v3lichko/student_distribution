@@ -1,4 +1,9 @@
-.mod
-.md
+# local config
 .env
 Makefile.mk
+
+# IDE
+.idea/
+
+# build artifacts
+/bin/
