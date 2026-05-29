@@ -3,133 +3,94 @@ package handler
 import (
 	"encoding/csv"
 	"net/http"
-	"sort"
 	"strconv"
 
-	"github.com/go-pg/pg/v10"
-	"github.com/v3lichko/student-distribution/internal/models"
+	distribution "github.com/v3lichko/student-distribution/internal/distributition"
 	"github.com/v3lichko/student-distribution/internal/response"
+	"github.com/v3lichko/student-distribution/internal/storage"
 )
 
-func sortByScore(students []models.Student) {
-	sort.Slice(students, func(i int, j int) bool {
-		return students[i].Score > students[j].Score
-	})
-}
-
-func sortByGroup(groups []models.Group) {
-	sort.Slice(groups, func(i int, j int) bool {
-		return groups[i].Number < groups[j].Number
-	})
-}
-
-func sortDistributionByGroup(result []models.GroupDistribution) {
-	sort.Slice(result, func(i int, j int) bool {
-		return result[i].GroupNumber < result[j].GroupNumber
-	})
-}
-
 type DistributionHandler struct {
-	db *pg.DB
+	storage *storage.DistributionStorage
 }
 
-func NewDistributionHandler(db *pg.DB) *DistributionHandler {
-	return &DistributionHandler{
-		db: db,
-	}
+func NewDistributionHandler(distributionStorage *storage.DistributionStorage) *DistributionHandler {
+	return &DistributionHandler{storage: distributionStorage}
 }
 
-// @Summary Get Distribution
-// @Tags Distribution
+// @Summary Get current distribution
+// @Tags distribution
 // @Produce json
-// @Success 200  {array}   models.GroupDistribution
+// @Success 200 {array} models.GroupDistribution
+// @Failure 500 {object} map[string]string
 // @Router /distribution [get]
-func (h *DistributionHandler) Distribution(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		h.GetDistribution(w, r)
+func (h *DistributionHandler) GetDistribution(w http.ResponseWriter, r *http.Request) {
+	result, err := h.storage.GetDistribution(r.Context())
+	if err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-}
 
-func (h *DistributionHandler) GetDistribution(w http.ResponseWriter, r *http.Request) {
-	students := make([]models.Student, 0)
-	h.db.Model(&students).Where("group_number IS NOT NULL").Order("group_number ASC").Order("score DESC").Select()
-	resultMap := make(map[int][]models.Student)
-
-	for _, student := range students {
-		if student.GroupNumber == nil {
-			continue
-		}
-		groupNumber := *student.GroupNumber
-		resultMap[groupNumber] = append(resultMap[groupNumber], student)
-	}
-
-	result := make([]models.GroupDistribution, 0)
-	for groupNumber, groupStudents := range resultMap {
-		result = append(result, models.GroupDistribution{
-			GroupNumber: groupNumber,
-			Students:    groupStudents,
-		})
-	}
-	sortDistributionByGroup(result)
 	response.WriteJSON(w, http.StatusOK, result)
 }
 
-// @Summary Run distribution
-// @Tags distribution
-// @Produce text/csv
-// @Success 200 {file} string
-// @Router /distribution/export [get]
-func (h *DistributionHandler) StartDistribution(w http.ResponseWriter, r *http.Request) {
-	students := make([]models.Student, 0)
-	groups := make([]models.Group, 0)
-	h.db.Model(&students).Select()
-	h.db.Model(&groups).Select()
-	sortByScore(students)
-	sortByGroup(groups)
-	studentIndex := 0
-	for _, group := range groups {
-		for idx := 0; idx < group.Capacity && studentIndex < len(students); idx++ {
-			students[studentIndex].GroupNumber = &group.Number
-			h.db.Model(&students[studentIndex]).Column("group_number").Where("isu = ?", students[studentIndex].ISU).Update()
-			studentIndex++
-		}
-	}
-	response.WriteJSON(w, http.StatusOK, students)
-}
-
-// @Summary Run distribution
+// @Summary Run distribution algorithm
 // @Tags distribution
 // @Produce json
 // @Success 200 {array} models.Student
+// @Failure 500 {object} map[string]string
 // @Router /distribution/run [post]
+func (h *DistributionHandler) StartDistribution(w http.ResponseWriter, r *http.Request) {
+	students, err := h.storage.ListStudents(r.Context())
+	if err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	groups, err := h.storage.ListGroups(r.Context())
+	if err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	assigned := distribution.Distribute(students, groups)
+
+	if err := h.storage.UpdateAssignments(r.Context(), assigned); err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, assigned)
+}
+
+// @Summary Export distribution as CSV
+// @Tags distribution
+// @Produce text/csv
+// @Success 200
+// @Failure 500 {object} map[string]string
+// @Router /distribution/export [get]
 func (h *DistributionHandler) ExportDistributionCSV(w http.ResponseWriter, r *http.Request) {
-	students := make([]models.Student, 0)
-	h.db.Model(&students).
-		Where("group_number IS NOT NULL").
-		Order("group_number ASC").
-		Order("score DESC").
-		Select()
+	students, err := h.storage.GetDistributedStudents(r.Context())
+	if err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
 
 	w.Header().Set("Content-Type", "text/csv")
 	w.Header().Set("Content-Disposition", `attachment; filename="distribution.csv"`)
 
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
-	writer.Write([]string{
-		"group_number",
-		"isu",
-		"full_name",
-		"telegram",
-		"score",
-	})
+
+	_ = writer.Write([]string{"group_number", "isu", "full_name", "telegram", "score"})
 
 	for _, student := range students {
 		groupNumber := ""
 		if student.GroupNumber != nil {
 			groupNumber = strconv.Itoa(*student.GroupNumber)
 		}
-		writer.Write([]string{
+
+		_ = writer.Write([]string{
 			groupNumber,
 			strconv.Itoa(student.ISU),
 			student.FullName,

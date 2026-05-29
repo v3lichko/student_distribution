@@ -4,56 +4,55 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/go-pg/pg/v10"
 	"github.com/v3lichko/student-distribution/internal/models"
 	"github.com/v3lichko/student-distribution/internal/response"
+	"github.com/v3lichko/student-distribution/internal/storage"
 )
 
 type GroupHandler struct {
-	db *pg.DB
+	storage *storage.GroupStorage
 }
 
-func NewGroupHandler(db *pg.DB) *GroupHandler {
-	return &GroupHandler{
-		db: db,
-	}
+func NewGroupHandler(groupStorage *storage.GroupStorage) *GroupHandler {
+	return &GroupHandler{storage: groupStorage}
 }
 
-func (h *GroupHandler) Groups(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		h.CreateGroup(w, r)
-		return
-	}
-	if r.Method == http.MethodGet {
-		h.GetGroups(w, r)
-		return
-	}
-	response.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{
-		"error": "method not allowed",
-	})
-}
-
-// @Summary Create groups
+// @Summary Create group
 // @Tags groups
 // @Accept json
 // @Produce json
 // @Param body body models.Group true "Group data"
 // @Success 201 {object} models.Group
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
 // @Router /groups [post]
 func (h *GroupHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	var group models.Group
-	json.NewDecoder(r.Body).Decode(&group)
-	h.db.Model(&group).Insert()
+	if err := json.NewDecoder(r.Body).Decode(&group); err != nil {
+		response.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
+		return
+	}
+
+	if err := h.storage.CreateGroup(&group); err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+		return
+	}
+
 	response.WriteJSON(w, http.StatusCreated, group)
 }
 
-// @Summary get groups
+// @Summary Get all groups
 // @Tags groups
 // @Produce json
 // @Success 200 {array} models.Group
+// @Failure 500 {object} map[string]string
 // @Router /groups [get]
 func (h *GroupHandler) GetGroups(w http.ResponseWriter, r *http.Request) {
-	groups := make([]models.Group, 0)
-	h.db.Model(&groups).Select()
+	groups, err := h.storage.GetGroups()
+	if err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+		return
+	}
+
 	response.WriteJSON(w, http.StatusOK, groups)
 }

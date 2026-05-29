@@ -6,111 +6,126 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-pg/pg/v10"
+	"github.com/v3lichko/student-distribution/internal/api"
 	"github.com/v3lichko/student-distribution/internal/models"
 	"github.com/v3lichko/student-distribution/internal/response"
+	"github.com/v3lichko/student-distribution/internal/storage"
 )
 
 type StudentHandler struct {
-	db *pg.DB
+	storage *storage.StudentStorage
 }
 
-func NewStudentHandler(db *pg.DB) *StudentHandler {
-	return &StudentHandler{
-		db: db,
-	}
+func NewStudentHandler(studentStorage *storage.StudentStorage) *StudentHandler {
+	return &StudentHandler{storage: studentStorage}
 }
 
+// @Summary Create student
+// @Tags students
+// @Accept json
+// @Produce json
+// @Param body body models.Student true "Student data"
+// @Success 201 {object} api.Student
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /students [post]
 func (h *StudentHandler) CreateStudent(w http.ResponseWriter, r *http.Request) {
 	var student models.Student
-	json.NewDecoder(r.Body).Decode(&student)
+	if err := json.NewDecoder(r.Body).Decode(&student); err != nil {
+		response.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
+		return
+	}
 
-	h.db.Model(&student).Insert()
-	response.WriteJSON(w, http.StatusCreated, student)
+	if err := h.storage.CreateStudent(&student); err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+		return
+	}
+
+	response.WriteJSON(w, http.StatusCreated, api.StudentFromModel(student))
 }
 
-func (h *StudentHandler) Students(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		h.CreateStudent(w, r)
-		return
-	}
-	if r.Method == http.MethodGet {
-		h.GetStudents(w, r)
-		return
-	}
-	if r.Method == http.MethodDelete {
-		h.DeleteStudent(w, r)
-		return
-	}
-
-	response.WriteJSON(w, http.StatusMethodNotAllowed, map[string]string{
-		"error": "method not allowed",
-	})
-}
-
-// @Summary Delete students
+// @Summary Get all students
 // @Tags students
 // @Produce json
-// @Param isu query int true "isu of student"
-// @Success 200 {object} map[string]string
-// @Router /students [delete]
-func (h *StudentHandler) DeleteStudent(w http.ResponseWriter, r *http.Request) {
-	isuStr := r.URL.Query().Get("isu")
-	isu, _ := strconv.Atoi(isuStr)
-	_, err := h.db.Model((*models.Student)(nil)).
-		Where("isu = ?", isu).
-		Delete()
-	if err != nil {
-		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{
-			"error": err.Error(),
-		})
-		return
-	}
-	response.WriteJSON(w, http.StatusOK, map[string]string{
-		"status": "deleted",
-	})
-}
-
-// @Summary Get students
-// @Tags students
-// @Produce json
-// @Success 200 {array} map[string]string
+// @Success 200 {array} api.Student
+// @Failure 500 {object} map[string]string
 // @Router /students [get]
 func (h *StudentHandler) GetStudents(w http.ResponseWriter, r *http.Request) {
-	student := make([]models.Student, 0)
-	h.db.Model(&student).Select()
-	response.WriteJSON(w, http.StatusOK, student)
+	students, err := h.storage.GetStudents()
+	if err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, api.StudentsFromModels(students))
 }
 
-// @Summary Import students
+// @Summary Delete student
+// @Tags students
+// @Produce json
+// @Param isu query int true "ISU number"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /students [delete]
+func (h *StudentHandler) DeleteStudent(w http.ResponseWriter, r *http.Request) {
+	isu, err := strconv.Atoi(r.URL.Query().Get("isu"))
+	if err != nil || isu <= 0 {
+		response.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid isu"})
+		return
+	}
+
+	if err := h.storage.DeleteStudent(isu); err != nil {
+		response.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+// @Summary Import students from CSV
 // @Tags students
 // @Accept multipart/form-data
 // @Produce json
-// @Param film formData file true "CSV with students"
+// @Param file formData file true "CSV file"
 // @Success 201 {object} map[string]string
+// @Failure 400 {object} map[string]string
 // @Router /students/import [post]
 func (h *StudentHandler) ImportStudentsCSV(w http.ResponseWriter, r *http.Request) {
-	file, _, _ := r.FormFile("file")
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		response.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "file required"})
+		return
+	}
 	defer file.Close()
-	reader := csv.NewReader(file)
-	records, _ := reader.ReadAll()
+
+	records, err := csv.NewReader(file).ReadAll()
+	if err != nil {
+		response.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid csv"})
+		return
+	}
+
 	for i, record := range records {
-		if i == 0 {
+		if i == 0 || len(record) < 4 {
 			continue
 		}
 
-		isu, _ := strconv.Atoi(record[0])
-		score, _ := strconv.Atoi(record[3])
+		isu, err := strconv.Atoi(record[0])
+		if err != nil {
+			continue
+		}
+		score, err := strconv.Atoi(record[3])
+		if err != nil {
+			continue
+		}
 
-		student := models.Student{
+		_ = h.storage.CreateStudent(&models.Student{
 			ISU:      isu,
 			FullName: record[1],
 			Telegram: record[2],
 			Score:    score,
-		}
-		h.db.Model(&student).Insert()
+		})
 	}
-	response.WriteJSON(w, http.StatusCreated, map[string]string{
-		"status": "students imported",
-	})
+
+	response.WriteJSON(w, http.StatusCreated, map[string]string{"status": "students imported"})
 }

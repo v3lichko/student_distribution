@@ -1,0 +1,10 @@
+APP_PORT       ?= 8080
+POSTGRES_HOST  ?= localhost
+POSTGRES_PORT  ?= 5433
+POSTGRES_USER  ?=
+POSTGRES_PASSWORD ?=
+POSTGRES_DB    ?=
+CSV_PATH       ?= raw_data/students.csv
+EXPORT_PATH    ?= raw_data/distribution_export.csv
+GROUP_COUNT    ?= 10
+GROUP_CAPACITY ?= 1000
